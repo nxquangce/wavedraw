@@ -285,4 +285,12 @@ export class WaveDrawing {
         this.doubleCurve(group, x + this.baseWidth + startTransit + this.transitionWidth, y, fillColor)
         return group;
     }
+
+    public static text(svg: Svg | G, x: number, y: number, value: string, textSize: number) {
+        svg.text(value)
+            .x(x)
+            .y(y)
+            .font({ size: textSize, anchor: 'middle' });
+        return svg;
+    }
 }

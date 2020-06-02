@@ -1,0 +1,24 @@
+.select-box {
+    position: relative;
+    width: 100%;
+    border: solid 1px #eeeeee;
+
+    .arrow {
+        float: right;
+    }
+
+    .select-options {
+        position: absolute;
+        background-color: #ffffff;
+        border: solid 1px #c1c1c1;
+
+        span {
+            width: 100%;
+            display: inline-block;
+        }
+
+        span:hover {
+            background-color: #4285F4;
+        }
+    }
+}

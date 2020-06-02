@@ -5,6 +5,11 @@ import { WaveDrawing as Wave, EdgeType } from '@/lib/wave-drawing';
 @Component
 export class WaveImageTs extends Vue {
 
+    baseX: number = 5;
+    baseY: number = 5;
+    padding: number = 5;
+    totalCycle: number = 16;
+
     scale = 1;
 
     colors = ['#E0FEFE', '#C7CEEA', '#FFDAC1', '#FF9AA2', '#FFFFD8', '#B5EAD7', '#CCCCCC', '#FFFFFF', 'x', '#AA2822', '#D4342D', '#F3DDAC', '#E7BF71', '#C09645',
@@ -15,35 +20,61 @@ export class WaveImageTs extends Vue {
         console.log('wave image created')
         const wave = SVG().addTo('#wave-space').size(1000, 768);
         wave.viewbox(0, 0, 1000, 768);
-        let group: any[] = [];
-        for (let i = 0; i < 9; i++) {
-            group[i] = wave.group();
+
+        const waveJson = {
+            groups: [
+                {
+                    name: 'group 1',
+                    signals: [
+                        {
+                            name: 'clk',
+                            wave: [
+                                {
+                                    type: 'clk',
+                                    from: 0,
+                                    to: 'full',
+                                    isPosEdge: true,
+                                    isIdeal: true,
+                                    isArrow: true
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
         }
 
-        for (let j = 0; j < 16; j++) {
-            Wave.baseLine(group[0], j * 2 * Wave.baseWidth, 0, 7);
-            Wave.posClockIdeal(group[1], 2 * j * Wave.baseWidth, 0, true);
-            Wave.negClockIdeal(group[2], 2 * j * Wave.baseWidth, Wave.baseHeight + Wave.linePadding, true);
-            Wave.posClock(group[3], 2 * j * Wave.baseWidth, 2 * (Wave.baseHeight + Wave.linePadding), true);
-            Wave.negClock(group[4], 2 * j * Wave.baseWidth, 3 * (Wave.baseHeight + Wave.linePadding), true);
+        this.drawFromJson(wave, JSON.stringify(waveJson));
 
-            if (j > 0 && j < 3)
-                Wave.highCycle(group[5], 2 * j * Wave.baseWidth, 4 * (Wave.baseHeight + Wave.linePadding));
-            else if (j == 4)
-                Wave.gapTransitHighCycle(group[5], 2 * j * Wave.baseWidth, 4 * (Wave.baseHeight + Wave.linePadding), '#ffffff')
-            else if (j == 7)
-                Wave.gapTransitLowCycle(group[5], 2 * j * Wave.baseWidth, 4 * (Wave.baseHeight + Wave.linePadding), '#ffffff')
-            else if (j > 6)
-                Wave.lowCycle(group[5], 2 * j * Wave.baseWidth, 4 * (Wave.baseHeight + Wave.linePadding));
-            else if (j % 2 == 0)
-                Wave.transitHighCycle(group[5], 2 * j * Wave.baseWidth, 4 * (Wave.baseHeight + Wave.linePadding));
-            else
-                Wave.transitLowCycle(group[5], 2 * j * Wave.baseWidth, 4 * (Wave.baseHeight + Wave.linePadding));
+        // let group: any[] = [];
+        // for (let i = 0; i < 9; i++) {
+        //     group[i] = wave.group();
+        // }
 
-            Wave.busCycle(group[6], 2 * j * Wave.baseWidth, 5 * (Wave.baseHeight + Wave.linePadding), this.colors[j], this.colors[j + 1], '0x' + j, 14);
-            Wave.gapPosClock(group[7], 2 * j * Wave.baseWidth, 6 * (Wave.baseHeight + Wave.linePadding), true, '#ffffff');
-            Wave.gapNegClock(group[8], 2 * j * Wave.baseWidth, 7 * (Wave.baseHeight + Wave.linePadding), true, '#ffffff');
-        }
+        // for (let j = 0; j < 16; j++) {
+        //     Wave.baseLine(group[0], j * 2 * Wave.baseWidth, 0, 7);
+        //     Wave.posClockIdeal(group[1], 2 * j * Wave.baseWidth, 0, true);
+        //     Wave.negClockIdeal(group[2], 2 * j * Wave.baseWidth, Wave.baseHeight + Wave.linePadding, true);
+        //     Wave.posClock(group[3], 2 * j * Wave.baseWidth, 2 * (Wave.baseHeight + Wave.linePadding), true);
+        //     Wave.negClock(group[4], 2 * j * Wave.baseWidth, 3 * (Wave.baseHeight + Wave.linePadding), true);
+
+        //     if (j > 0 && j < 3)
+        //         Wave.highCycle(group[5], 2 * j * Wave.baseWidth, 4 * (Wave.baseHeight + Wave.linePadding));
+        //     else if (j == 4)
+        //         Wave.gapTransitHighCycle(group[5], 2 * j * Wave.baseWidth, 4 * (Wave.baseHeight + Wave.linePadding), '#ffffff')
+        //     else if (j == 7)
+        //         Wave.gapTransitLowCycle(group[5], 2 * j * Wave.baseWidth, 4 * (Wave.baseHeight + Wave.linePadding), '#ffffff')
+        //     else if (j > 6)
+        //         Wave.lowCycle(group[5], 2 * j * Wave.baseWidth, 4 * (Wave.baseHeight + Wave.linePadding));
+        //     else if (j % 2 == 0)
+        //         Wave.transitHighCycle(group[5], 2 * j * Wave.baseWidth, 4 * (Wave.baseHeight + Wave.linePadding));
+        //     else
+        //         Wave.transitLowCycle(group[5], 2 * j * Wave.baseWidth, 4 * (Wave.baseHeight + Wave.linePadding));
+
+        //     Wave.busCycle(group[6], 2 * j * Wave.baseWidth, 5 * (Wave.baseHeight + Wave.linePadding), this.colors[j], this.colors[j + 1], '0x' + j, 14);
+        //     Wave.gapPosClock(group[7], 2 * j * Wave.baseWidth, 6 * (Wave.baseHeight + Wave.linePadding), true, '#ffffff');
+        //     Wave.gapNegClock(group[8], 2 * j * Wave.baseWidth, 7 * (Wave.baseHeight + Wave.linePadding), true, '#ffffff');
+        // }
 
         const hoverBox = this.initHoverBox(wave);
 
@@ -91,5 +122,66 @@ export class WaveImageTs extends Vue {
         const boxX = parseInt((x / (2 * Wave.baseWidth)).toString()) * 2 * Wave.baseWidth;
         const boxY = parseInt((y / (Wave.baseHeight + Wave.linePadding)).toString()) * (Wave.baseHeight + Wave.linePadding);
         svg.move(boxX, boxY - adjH);
+    }
+
+    drawFromJson(svg: Svg | G, json: string) {
+        const wave = JSON.parse(json);
+        if (wave.groups as any[]) {
+            this.baseX = 105;
+            wave.groups.forEach((group: any) => {
+                const groupG = svg.group();
+                Wave.text(groupG, this.padding + 25, this.padding, group.name, 14);
+                group.signals.forEach((signal: any) => {
+                    const signalLineG = groupG.group();
+                    const signalNameG = signalLineG.group();
+                    const signalWaveG = signalLineG.group();
+                    Wave.text(signalNameG, this.padding + 75, this.padding + (Wave.baseHeight + Wave.linePadding) / 2, signal.name, 14);
+                    signal.wave.forEach((waveDes: any, index: number) => {
+                        switch (waveDes.type) {
+                            case "clk": {
+                                const numOfCycle = (waveDes.to == 'full') ? this.totalCycle : waveDes.to;
+                                this.drawClk(
+                                    signalWaveG,
+                                    this.baseX,
+                                    this.padding + index * Wave.baseHeight + Wave.linePadding,
+                                    numOfCycle,
+                                    waveDes.isPosEdge,
+                                    waveDes.isIdeal,
+                                    waveDes.isArrow
+                                );
+                            }
+                        }
+                    });
+                })
+            });
+        }
+    }
+
+    drawClk(svg: Svg | G, x: number, y: number, numOfCycle: number, direction: boolean, isIdeal: boolean, isArrow: boolean) {
+        for (let i = 0; i < numOfCycle; i++) {
+            switch ([direction, isIdeal]) {
+                case [false, false]: {
+                    Wave.negClock(svg, x + i * 2 * Wave.baseWidth, y, isArrow);
+                    break;
+                }
+                case [false, true]: {
+                    Wave.negClockIdeal(svg, x + i * 2 * Wave.baseWidth, y, isArrow);
+                    break;
+                }
+                case [true, false]: {
+                    Wave.posClock(svg, x + i * 2 * Wave.baseWidth, y, isArrow);
+                    break;
+                }
+                case [true, true]: {
+                    Wave.posClockIdeal(svg, x + i * 2 * Wave.baseWidth, y, isArrow);
+                    break;
+                }
+                default: {
+                    Wave.posClockIdeal(svg, x + i * 2 * Wave.baseWidth, y, true);
+                    break;
+                }
+            }
+        }
+        return svg;
     }
 }
