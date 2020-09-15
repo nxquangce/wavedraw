@@ -2,6 +2,15 @@ import { Component, Vue } from 'vue-property-decorator';
 import { SVG, Svg, G } from '@svgdotjs/svg.js';
 import { WaveDrawing as Wave, EdgeType } from '@/lib/wave-drawing';
 
+enum SignalType {
+    HIGH,
+    LOW,
+    TRANSIT_HIGH,
+    TRANSIT_LOW,
+    GAP_TRANSIT_HIGH,
+    GAP_TRANSIT_LOW
+}
+
 @Component
 export class WaveImageTs extends Vue {
 
@@ -34,6 +43,45 @@ export class WaveImageTs extends Vue {
                                     from: 0,
                                     to: 'full',
                                     isPosEdge: true,
+                                    isIdeal: true,
+                                    isArrow: true
+                                }
+                            ]
+                        },
+                        {
+                            name: 'signal 1',
+                            wave: [
+                                {
+                                    type: 'custom',
+                                    from: 0,
+                                    to: 2,
+                                    value: 0
+                                },
+                                {
+                                    from: 3,
+                                    to: 5,
+                                    value: 1
+                                },
+                                {
+                                    type: 'gap',
+                                    from: 6,
+                                    to: 6,
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    name: 'group 2',
+                    signals: [
+                        {
+                            name: 'clk',
+                            wave: [
+                                {
+                                    type: 'clk',
+                                    from: 0,
+                                    to: 'full',
+                                    isPosEdge: false,
                                     isIdeal: true,
                                     isArrow: true
                                 }
@@ -119,36 +167,62 @@ export class WaveImageTs extends Vue {
 
     hover(svg: Svg | G, x: number, y: number) {
         const adjH = 4;
-        const boxX = parseInt((x / (2 * Wave.baseWidth)).toString()) * 2 * Wave.baseWidth;
-        const boxY = parseInt((y / (Wave.baseHeight + Wave.linePadding)).toString()) * (Wave.baseHeight + Wave.linePadding);
+        const boxX = this.baseX + parseInt(((x - this.baseX) / (2 * Wave.baseWidth)).toString()) * 2 * Wave.baseWidth;
+        const boxY = this.baseY + parseInt(((y - this.baseY) / (Wave.baseHeight + Wave.linePadding)).toString()) * (Wave.baseHeight + Wave.linePadding);
         svg.move(boxX, boxY - adjH);
     }
 
     drawFromJson(svg: Svg | G, json: string) {
         const wave = JSON.parse(json);
+        let numOfGroupSignals: number[] = [];
         if (wave.groups as any[]) {
             this.baseX = 105;
-            wave.groups.forEach((group: any) => {
+            wave.groups.forEach((group: any, groupIndex: number) => {
+                numOfGroupSignals[groupIndex] = group.signals.length;
+                let totalDrawSignals = 0;
+                for (let gIdx = 0; gIdx < groupIndex; gIdx++) {
+                    totalDrawSignals += numOfGroupSignals[gIdx];
+                }
+                const baseGroupY = totalDrawSignals * (Wave.baseHeight + Wave.linePadding);
                 const groupG = svg.group();
-                Wave.text(groupG, this.padding + 25, this.padding, group.name, 14);
-                group.signals.forEach((signal: any) => {
+                Wave.text(groupG, this.padding + 25, this.padding + baseGroupY + ((group.signals.length - 1) * (Wave.baseHeight + Wave.linePadding) / 2) + (Wave.baseHeight / 2), group.name, 14);
+                group.signals.forEach((signal: any, signalIndex: number) => {
                     const signalLineG = groupG.group();
                     const signalNameG = signalLineG.group();
                     const signalWaveG = signalLineG.group();
-                    Wave.text(signalNameG, this.padding + 75, this.padding + (Wave.baseHeight + Wave.linePadding) / 2, signal.name, 14);
-                    signal.wave.forEach((waveDes: any, index: number) => {
+                    Wave.text(signalNameG, this.padding + 75, this.padding + baseGroupY + signalIndex * (Wave.baseHeight + Wave.linePadding) + (Wave.baseHeight / 2), signal.name, 14);
+                    signal.wave.forEach((waveDes: any, waveIndex: number) => {
+                        const numOfCycle = (waveDes.to == 'full') ? (this.totalCycle - waveDes.from) : (waveDes.to - waveDes.from + 1);
                         switch (waveDes.type) {
                             case "clk": {
-                                const numOfCycle = (waveDes.to == 'full') ? this.totalCycle : waveDes.to;
                                 this.drawClk(
                                     signalWaveG,
                                     this.baseX,
-                                    this.padding + index * Wave.baseHeight + Wave.linePadding,
+                                    this.baseY + baseGroupY + signalIndex * (Wave.baseHeight + Wave.linePadding),
                                     numOfCycle,
                                     waveDes.isPosEdge,
                                     waveDes.isIdeal,
                                     waveDes.isArrow
                                 );
+                                break;
+                            }
+                            case 'custom':
+                            case undefined:
+                            case null: {
+                                const parsedType = this.calSignalType(signal.wave[waveIndex - 1], waveDes);
+                                this.drawSignal(
+                                    signalWaveG,
+                                    this.baseX + waveDes.from * (Wave.baseWidth * 2),
+                                    this.baseY + baseGroupY + signalIndex * (Wave.baseHeight + Wave.linePadding),
+                                    numOfCycle,
+                                    parsedType,
+                                    waveDes.isIdeal
+                                );
+                                break;
+                            }
+                            case 'gap': {
+
+                                break;
                             }
                         }
                     });
@@ -158,21 +232,23 @@ export class WaveImageTs extends Vue {
     }
 
     drawClk(svg: Svg | G, x: number, y: number, numOfCycle: number, direction: boolean, isIdeal: boolean, isArrow: boolean) {
+        let condStr = direction ? '1' : '0';
+        condStr += isIdeal ? '1' : '0';
         for (let i = 0; i < numOfCycle; i++) {
-            switch ([direction, isIdeal]) {
-                case [false, false]: {
+            switch (condStr) {
+                case '00': {
                     Wave.negClock(svg, x + i * 2 * Wave.baseWidth, y, isArrow);
                     break;
                 }
-                case [false, true]: {
+                case '01': {
                     Wave.negClockIdeal(svg, x + i * 2 * Wave.baseWidth, y, isArrow);
                     break;
                 }
-                case [true, false]: {
+                case '10': {
                     Wave.posClock(svg, x + i * 2 * Wave.baseWidth, y, isArrow);
                     break;
                 }
-                case [true, true]: {
+                case '11': {
                     Wave.posClockIdeal(svg, x + i * 2 * Wave.baseWidth, y, isArrow);
                     break;
                 }
@@ -183,5 +259,83 @@ export class WaveImageTs extends Vue {
             }
         }
         return svg;
+    }
+
+    calSignalType(before: any, current: any) {
+        let result = '';
+        if (before) {
+            result += before.value.toString() + current.value.toString();
+        }
+        else {
+            result += current.value.toString() + current.value.toString();
+        }
+
+        return result;
+    }
+
+    drawCycle(svg: Svg | G, x: number, y: number, numOfCycle: number, type: SignalType, isIdeal: boolean) {
+        for (let i = 0; i < numOfCycle; i++) {
+            switch (type) {
+                case SignalType.HIGH: {
+                    if (isIdeal)
+                        Wave.highIdeal(svg, x + i * 2 * Wave.baseWidth, y);
+                    else
+                        Wave.highCycle(svg, x + i * 2 * Wave.baseWidth, y);
+                    break;
+                }
+                case SignalType.LOW: {
+                    if (isIdeal)
+                        Wave.lowIdeal(svg, x + i * 2 * Wave.baseWidth, y);
+                    else
+                        Wave.lowCycle(svg, x + i * 2 * Wave.baseWidth, y);
+                    break;
+                }
+                case SignalType.TRANSIT_HIGH: {
+                    if (isIdeal)
+                        Wave.transitHigh(svg, x + i * 2 * Wave.baseWidth, y);
+                    else
+                        Wave.transitHighCycle(svg, x + i * 2 * Wave.baseWidth, y);
+                    break;
+                }
+                case SignalType.TRANSIT_LOW: {
+                    if (isIdeal)
+                        Wave.transitLow(svg, x + i * 2 * Wave.baseWidth, y);
+                    else
+                        Wave.transitLowCycle(svg, x + i * 2 * Wave.baseWidth, y);
+                    break;
+                }
+                case SignalType.GAP_TRANSIT_HIGH: {
+                    Wave.gapTransitHighCycle(svg, x + i * 2 * Wave.baseWidth, y, '#000000');
+                    break;
+                }
+                case SignalType.GAP_TRANSIT_LOW: {
+                    Wave.gapTransitLowCycle(svg, x + i * 2 * Wave.baseWidth, y, '#000000');
+                    break;
+                }
+            }
+        }
+    }
+
+    drawSignal(svg: Svg | G, x: number, y: number, numOfCycle: number, type: string, isIdeal: boolean) {
+        switch (type) {
+            case '00': {
+                this.drawCycle(svg, x, y, numOfCycle, SignalType.LOW, isIdeal);
+                break;
+            }
+            case '01': {
+                this.drawCycle(svg, x, y, 1, SignalType.TRANSIT_HIGH, isIdeal);
+                this.drawCycle(svg, x + (Wave.baseWidth * 2), y, numOfCycle - 1, SignalType.HIGH, isIdeal);
+                break;
+            }
+            case '10': {
+                this.drawCycle(svg, x, y, 1, SignalType.TRANSIT_LOW, isIdeal);
+                this.drawCycle(svg, x + (Wave.baseWidth * 2), y, numOfCycle - 1, SignalType.LOW, isIdeal);
+                break;
+            }
+            case '11': {
+                this.drawCycle(svg, x, y, numOfCycle, SignalType.HIGH, isIdeal);
+                break;
+            }
+        }
     }
 }
